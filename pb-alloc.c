@@ -27,7 +27,7 @@
 
 
 static void*    free_ptr  = NULL; 
-static void*	last_allocated_ptr = free_ptr; 
+static void*	last_unallocated_free_ptr = NULL; 
 static intptr_t start_ptr;
 static intptr_t end_ptr;
 
@@ -90,19 +90,18 @@ void* malloc (size_t size) {
   link_s* free_block_header;  
   //free() adds free blocks to the start of the linked list. malloc() preferentially selects them. 
 
- //edge case: we have not allocated any blocks
-  if (start_ptr == (intptr_t free_ptr))  { 
+ //edge case: we have not allocated any blocks 
+  if (start_ptr == (intptr_t free_ptr) || noNext(free_ptr))  { 
     free_block_header = (link_s*) free_ptr; 
     free_block_header -> size = size; 
     free_block_header -> next = NULL; //allocated 
     
     new_block_ptr = (void*) ((intptr_t) free_block_header + sizeof(link_s)); //start of the first allocated block
     
-    link_s* new_free_ptr =  (link_s*)((intptr_t) new_block_ptr + size);
-    new_free_ptr -> size = (end_ptr - (intptr_t) new_block_ptr - sizeof(link_s)) - sizeof(link_s) ; //offset by two links and a block  
-    new_free_ptr -> next = NULL;  
-    free_ptr = (void*) (intptr_t) new_free_ptr + sizeof(size_t); 
+    // update a last unallocated block variable (this is a block that was not made with free())
+    last_unallocated_free_ptr =  (void*) ((intptr_t) new_block_ptr + size + sizeof(size_t);
   
+
     return new_block_ptr; 
   }
 
@@ -110,6 +109,7 @@ void* malloc (size_t size) {
   //find the first fit block by looping through the free blocks
   (void*) free_block_iterator = free_ptr;
   (link_s*) previous_free_block = NULL;
+ 
    
  
   while(free_block_iterator != NULL) {
@@ -136,16 +136,28 @@ void* malloc (size_t size) {
     }   
   }
 
+  //None of the blocks made with free() are large enough for allocation. So we allocate
+  //in the space between the last allocated block and the end of the heap.
+  free_block_header = (link_s*) ((intptr_t) last_unallocated_free_ptr - sizeof(size_t); 
+  free_block_header -> size = size; 
+  free_block_header -> next = NULL; 
+
+  last_unallocated_free_ptr = (void*) (intptr_t)free_block_header + sizeof(link_s) + size + sizeof(size_t); 
+
+ //TODO: Error handling when memory allocation hits into end of heap?     
 
 
-  size_t* header_ptr    = (size_t*)free_ptr;
-  void*   new_block_ptr = (void*)((intptr_t)free_ptr + sizeof(size_t));
-  free_ptr = (void*)((intptr_t)new_block_ptr + size);
-
-  *header_ptr = size;
-  return new_block_ptr;
- 
+  
 } // malloc()
+
+//returns true if a free block has no pointer to a next free block
+boolean noNext (void* ptr) {
+ link_s* block_header = (link_s*) (intptr_t)ptr - sizeof(size_t); 
+ if (link_s* -> next == NULL) {
+  return true; 
+ } else return false; 
+}
+
 
 //free takes a ptr to an allocated block and deallocates it. We mark it as free, and add a pointer from the previous free block 
 void free (void* ptr) {
