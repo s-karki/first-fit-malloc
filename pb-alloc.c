@@ -60,6 +60,23 @@ void init () {
 
 }
 
+//link_s is a structure that will let us construct a linked list for the free types. It contains the size of
+//the blocks and the address to the next block. 
+
+typedef struct link {
+  size_t size; 
+  struct link* next; 
+  
+} link_s; 
+
+
+//returns true if a free block has no pointer to a next free block
+int  noNext (void* ptr) {
+ link_s* block_header = (link_s*) (intptr_t)ptr - sizeof(size_t); 
+ if (block_header -> next == NULL) {
+  return 1; 
+ } else return 0; 
+}
 
 /*
  * malloc allocates a block of memory of atleast (size) bytes and returns a pointer to this block
@@ -86,12 +103,15 @@ void init () {
 void* malloc (size_t size) {
 
   init();
+  void* free_block_iterator; 
+  link_s* previous_free_block; 
   void* new_block_ptr;
   link_s* free_block_header;  
   //free() adds free blocks to the start of the linked list. malloc() preferentially selects them. 
 
  //edge case: we have not allocated any blocks 
-  if (start_ptr == (intptr_t free_ptr) || noNext(free_ptr))  { 
+
+  if ( start_ptr == (intptr_t) free_ptr || noNext(free_ptr) ){
     free_block_header = (link_s*) free_ptr; 
     free_block_header -> size = size; 
     free_block_header -> next = NULL; //allocated 
@@ -99,16 +119,15 @@ void* malloc (size_t size) {
     new_block_ptr = (void*) ((intptr_t) free_block_header + sizeof(link_s)); //start of the first allocated block
     
     // update a last unallocated block variable (this is a block that was not made with free())
-    last_unallocated_free_ptr =  (void*) ((intptr_t) new_block_ptr + size + sizeof(size_t);
+    last_unallocated_free_ptr =  (void*) ((intptr_t) new_block_ptr + size + sizeof(size_t));
   
-
     return new_block_ptr; 
   }
 
 
   //find the first fit block by looping through the free blocks
-  (void*) free_block_iterator = free_ptr;
-  (link_s*) previous_free_block = NULL;
+  free_block_iterator = free_ptr;
+  previous_free_block = NULL;
  
    
  
@@ -123,7 +142,7 @@ void* malloc (size_t size) {
       //edge case: allocating memory in the first free block in the list  
       if (previous_free_block == NULL) {
          free_ptr = free_block_header -> next; 
-         return new_link_ptr; 
+         return new_block_ptr; 
       } 
 
       previous_free_block -> next = free_block_header -> next; 
@@ -132,13 +151,13 @@ void* malloc (size_t size) {
 
     } else {
       free_block_iterator = free_block_header -> next; 
-      previous_free_block_header = free_block_header; 
+      previous_free_block = free_block_header; 
     }   
   }
 
   //None of the blocks made with free() are large enough for allocation. So we allocate
   //in the space between the last allocated block and the end of the heap.
-  free_block_header = (link_s*) ((intptr_t) last_unallocated_free_ptr - sizeof(size_t); 
+  free_block_header = (link_s*) ((intptr_t) last_unallocated_free_ptr - sizeof(size_t)); 
   free_block_header -> size = size; 
   free_block_header -> next = NULL; 
 
@@ -150,21 +169,13 @@ void* malloc (size_t size) {
   
 } // malloc()
 
-//returns true if a free block has no pointer to a next free block
-boolean noNext (void* ptr) {
- link_s* block_header = (link_s*) (intptr_t)ptr - sizeof(size_t); 
- if (link_s* -> next == NULL) {
-  return true; 
- } else return false; 
-}
-
 
 //free takes a ptr to an allocated block and deallocates it. We mark it as free, and add a pointer from the previous free block 
 void free (void* ptr) {
  
   
-  intptr_t head_addr = (intptr_t) - sizeof(size_t);  //address of header start 
-  link_s* new_link_ptr = (link_s*) header_addr; 
+//  intptr_t*  head_addr = (intptr_t) - sizeof(size_t)  //address of header start 
+  link_s* new_link_ptr = (link_s*) (intptr_t)ptr- sizeof(size_t); 
   
   //add this address of this now free block to the start of the list of free points 
   new_link_ptr -> next = free_ptr; 
@@ -172,15 +183,6 @@ void free (void* ptr) {
    
   
 } // free()
-
-//link_s is a structure that will let us construct a linked list for the free types. It contains the size of
-//the blocks and the address to the next block. 
-
-typedef struct link {
-  size_t size; 
-  struct link* next; 
-  
-} link_s; 
 
 
 /*
