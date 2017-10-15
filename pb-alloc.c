@@ -72,7 +72,7 @@ typedef struct link {
 
 //returns true if a free block has no pointer to a next free block
 int  noNext (void* ptr) {
- link_s* block_header = (link_s*) (intptr_t)ptr - sizeof(size_t); 
+ link_s* block_header = (link_s*) ptr ; 
  if (block_header -> next == NULL) {
   return 1; 
  } else return 0; 
@@ -103,7 +103,7 @@ int  noNext (void* ptr) {
 void* malloc (size_t size) {
 
   init();
-  void* free_block_iterator; 
+  //void* free_block_iterator; 
   link_s* previous_free_block; 
   void* new_block_ptr;
   link_s* free_block_header;  
@@ -119,29 +119,30 @@ void* malloc (size_t size) {
     new_block_ptr = (void*) ((intptr_t) free_block_header + sizeof(link_s)); //start of the first allocated block
     
     // update a last unallocated block variable (this is a block that was not made with free())
-    last_unallocated_free_ptr =  (void*) ((intptr_t) new_block_ptr + size + sizeof(size_t));
-  
+    last_unallocated_free_ptr =  (void*) ((intptr_t) new_block_ptr + size);
+    free_ptr = last_unallocated_free_ptr;  
     return new_block_ptr; 
   }
 
 
   //find the first fit block by looping through the free blocks
-  free_block_iterator = free_ptr;
+  free_block_header = (link_s*) free_ptr;
   previous_free_block = NULL;
  
    
  
-  while(free_block_iterator != NULL) {
-    free_block_header = (link_s*) ((intptr_t) free_block_iterator - sizeof(size_t));
+  while(free_block_header != NULL) {
+   
     size_t free_block_size = free_block_header -> size; 
 
     if (size <= free_block_size) {
       new_block_ptr = (void*) ((intptr_t) free_block_header + sizeof(link_s));
 
       //nullify ptr to next free block and redirect pointer pointing to this block 
+     
       //edge case: allocating memory in the first free block in the list  
       if (previous_free_block == NULL) {
-         free_ptr = free_block_header -> next; 
+         free_ptr = (void*) free_block_header -> next; 
          return new_block_ptr; 
       } 
 
@@ -150,7 +151,7 @@ void* malloc (size_t size) {
       return new_block_ptr;  
 
     } else {
-      free_block_iterator = free_block_header -> next; 
+      free_block_header = free_block_header -> next; 
       previous_free_block = free_block_header; 
     }   
   }
@@ -170,15 +171,15 @@ void* malloc (size_t size) {
 } // malloc()
 
 
-//free takes a ptr to an allocated block and deallocates it. We mark it as free, and add a pointer from the previous free block 
+//free takes a ptr to an allocated block (not its header) and deallocates it. We mark it as free, and add a pointer from the previous free block 
 void free (void* ptr) {
  
   
 //  intptr_t*  head_addr = (intptr_t) - sizeof(size_t)  //address of header start 
-  link_s* new_link_ptr = (link_s*) (intptr_t)ptr- sizeof(size_t); 
+  link_s* new_link_ptr = (link_s*) (intptr_t)ptr- sizeof(link_s); 
   
   //add this address of this now free block to the start of the list of free points 
-  new_link_ptr -> next = free_ptr; 
+  new_link_ptr -> next = (link_s*) free_ptr; 
   free_ptr = ptr;  
    
   
@@ -262,16 +263,17 @@ void* realloc (void* ptr, size_t size) {
 
 #if !defined (PB_NO_MAIN)
 void main () {
-
-  int  size = 100;
-  int* x    = (int*)malloc(size * sizeof(int));
+  int size = 8; 
+  int* x = (int*)malloc(size * sizeof(int)); 
   assert(x != NULL);
+ 
+  /*for (int i = 0; i < size; i += 1) {
+   x[i] = i * 2; 
+  } */
 
-  for (int i = 0; i < size; i += 1) {
-    x[i] = i * 2;
-  }
+ int size2 = 200; 
+ int* y = (int*)malloc(size2*sizeof(int)); 
+ assert(y != NULL); 
 
-  printf("%d\n", x[size / 2]);
-  
 } // main()
 #endif
