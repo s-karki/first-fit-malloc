@@ -111,7 +111,7 @@ void* malloc (size_t size) {
 
  //edge case: we have not allocated any blocks 
 
-  if ( start_ptr == (intptr_t) free_ptr || noNext(free_ptr) ){
+  if (  noNext(free_ptr) ){
     free_block_header = (link_s*) free_ptr; 
     free_block_header -> size = size; 
     free_block_header -> next = NULL; //allocated 
@@ -150,18 +150,21 @@ void* malloc (size_t size) {
       return new_block_ptr;  
 
     } else {
-      free_block_header = free_block_header -> next; 
       previous_free_block = free_block_header; 
-    }   
+      free_block_header = free_block_header -> next; 
+     }   
   }
 
   //None of the blocks made with free() are large enough for allocation. So we allocate
   //in the space between the last allocated block and the end of the heap.
-  free_block_header = (link_s*) ((intptr_t) last_unallocated_free_ptr - sizeof(size_t)); 
+  free_block_header = (link_s*) last_unallocated_free_ptr; 
   free_block_header -> size = size; 
   free_block_header -> next = NULL; 
 
-  last_unallocated_free_ptr = (void*) (intptr_t)free_block_header + sizeof(link_s) + size + sizeof(size_t); 
+  new_block_ptr = (void*) ((intptr_t) free_block_header + sizeof(link_s));
+  last_unallocated_free_ptr = (void*) (intptr_t)new_block_ptr + size; 
+
+  return new_block_ptr;  
 
  //TODO: Error handling when memory allocation hits into end of heap?     
 
