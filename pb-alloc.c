@@ -131,23 +131,22 @@ void* malloc (size_t size) {
  
    
  
-  while(free_block_header != NULL) {
+  while(free_block_header != NULL && free_block_header != last_unallocated_free_ptr) {
    
     size_t free_block_size = free_block_header -> size; 
 
     if (size <= free_block_size) {
       new_block_ptr = (void*) ((intptr_t) free_block_header + sizeof(link_s));
-
+      
       //nullify ptr to next free block and redirect pointer pointing to this block 
      
       //edge case: allocating memory in the first free block in the list  
       if (previous_free_block == NULL) {
          free_ptr = (void*) free_block_header -> next; 
-         return new_block_ptr; 
+      } else {
+         previous_free_block -> next = free_block_header -> next;     
       } 
-
-      previous_free_block -> next = free_block_header -> next; 
-      free_block_header -> next = NULL; 
+      free_block_header -> next = NULL; //allocated. We don't split freed blocks, so block size is constant.
       return new_block_ptr;  
 
     } else {
@@ -176,11 +175,11 @@ void free (void* ptr) {
  
   
 //  intptr_t*  head_addr = (intptr_t) - sizeof(size_t)  //address of header start 
-  link_s* new_link_ptr = (link_s*) (intptr_t)ptr- sizeof(link_s); 
+  link_s* new_link_ptr = (link_s*) ((intptr_t)ptr- sizeof(link_s)); 
   
   //add this address of this now free block to the start of the list of free points 
   new_link_ptr -> next = (link_s*) free_ptr; 
-  free_ptr = ptr;  
+  free_ptr = new_link_ptr;  
    
   
 } // free()
@@ -273,7 +272,40 @@ void main () {
 
  int size2 = 200; 
  int* y = (int*)malloc(size2*sizeof(int)); 
+ //free(y); 
  assert(y != NULL); 
+
+ int size3 = 128; 
+ int* z = (int*)malloc(size3*sizeof(int)); 
+ assert(z != NULL); 
+ 
+ int size5 = 64; 
+
+ int* a = (int*)malloc(size3*sizeof(int)); 
+ int* b = (int*)malloc(size3*sizeof(int)); 
+ free(a);
+ free(b);
+ int* c = (int*)malloc(size5*sizeof(int)); 
+ int* d = (int*)malloc(size3*sizeof(int)); 
+
+ //More test cases: Free the blocks (z, c, d, x) in that order. Allocate 2 blocks of size5 -- malloc(512). Call them 
+ //e and f. Allocate one large block, h of size 256 -- malloc(1024). 
+ //We expect e to be allocated to address of d
+ //f to be allocated to address of c. 
+ //Since this is first fit (and we don't change the size of freed blocks, since we don't split freed blocks). 
+ //
+ //None of the freed blocks will fit h, so we expect it to go at the end. 
+ free(z); //128
+ free(c); //64
+ free(d); //128
+ free(x); //8
+
+ int* e = (int*)malloc(size5*sizeof(int)); 
+ int* f = (int*)malloc(size5*sizeof(int)); 
+ 
+ int size6 = 256; 
+ int* h = (int*)malloc(size6*sizeof(int)); 
+ assert(h > c && h > d); 
 
 } // main()
 #endif
