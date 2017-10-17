@@ -80,36 +80,19 @@ int  noNext (void* ptr) {
 
 /*
  * malloc allocates a block of memory of atleast (size) bytes and returns a pointer to this block
- * 
- * We assign a header pointer to the address that delimits 
- * free space and allocated space (free_ptr).
- *
- * We want to allocate space in memory for both the header and the data (whose size 
- * is determined by the "size" parameter). 
- * 
- * We initialize a new pointer (new_block_ptr)  that points to an address that is an offset of free_ptr and 
- * the size of an unsigned integer. We have allocated space for the header of this block. 
- *
- * Next, we reassign free_ptr to the next address where free space begins. This is the address of newly created block  
- * added to a size offset. We have allocated space for the block itself. Both new_block_ptr and free_ptr are void 
- * pointers, since we do not know the type of whatever is being stored at those addresses.  
- *
- * The header of the block tells us the address of the next block. We store the size of the block at the address of header_ptr. 
- * To find the address of the next block, we just need to dereference header_ptr and add the size to the address of the block pointer.
- *
- * We return the block pointer, points to the start of a block of the correct size. 
- */
+ * malloc will preferentially allocate blocks that were made with free().
+  */
 
 void* malloc (size_t size) {
 
   init();
-  //void* free_block_iterator; 
+  
   link_s* previous_free_block; 
   void* new_block_ptr;
   link_s* free_block_header;  
-  //free() adds free blocks to the start of the linked list. malloc() preferentially selects them. 
 
- //edge case: we have not allocated any blocks 
+
+ //edge case: we have not allocated any blocks or we have no blocks made with free()  
 
   if (  noNext(free_ptr) ){
     free_block_header = (link_s*) free_ptr; 
@@ -118,18 +101,16 @@ void* malloc (size_t size) {
     
     new_block_ptr = (void*) ((intptr_t) free_block_header + sizeof(link_s)); //start of the first allocated block
     
-    // update a last unallocated block variable (this is a block that was not made with free())
+   
     last_unallocated_free_ptr =  (void*) ((intptr_t) new_block_ptr + size);
     free_ptr = last_unallocated_free_ptr;  
     return new_block_ptr; 
   }
 
 
-  //find the first fit block by looping through the free blocks
+  //find the first fit block by looping through the free block made with free(). s
   free_block_header = (link_s*) free_ptr;
   previous_free_block = NULL;
- 
-   
  
   while(free_block_header != NULL && free_block_header != last_unallocated_free_ptr) {
    
@@ -146,7 +127,8 @@ void* malloc (size_t size) {
       } else {
          previous_free_block -> next = free_block_header -> next;     
       } 
-      free_block_header -> next = NULL; //allocated. We don't split freed blocks, so block size is constant.
+      
+      free_block_header -> next = NULL; //allocated. We don't split freed blocks, so block size is kept the same.
       return new_block_ptr;  
 
     } else {
@@ -166,10 +148,7 @@ void* malloc (size_t size) {
 
   return new_block_ptr;  
 
- //TODO: Error handling when memory allocation hits into end of heap?     
-
-
-  
+     
 } // malloc()
 
 
@@ -193,11 +172,7 @@ void free (void* ptr) {
  * 
  * We calculate (nmemb * size), and use malloc to allocate 
  * a block of memory of that size. new_block_ptr points to the start of that block.
- *
- * In C, assert(int exp) stops the program, and prints to stderr if exp (a boolean value) is false. 
- * If the value passed to assert() is true, nothing happens. Here, we check that the block pointer 
- * is not null i.e. we have enough space in memory to store (nmemb * size) bytes.  
- *
+ * 
  * bzero() writes (nmemb*size) bytes of value 0 in the memory location that start at the block pointer.
  * 
  */ 
@@ -216,20 +191,7 @@ void* calloc (size_t nmemb, size_t size) {
 /*
  * realloc resizes the block at the address of ptr. This version of realloc only 
  * increases the size of the block. 
- *
- * We first deal with edge cases. We do regular memory allocation if we pass a null pointer, and 
- * free the block at ptr if we want to resize the block to 0 (although we haven't implemented the deallocator)
- *
- * For the general case:
- * First, we obtain the pointer to the header. This is just the block pointer minus the size_t offset. 
- * We obtain the current block size by dereferencing header_ptr.  
- *
- * If we want to decrease the block size, then we do nothing, and just return the 
- * pointer to the current block. 
- *
- * If we want to expand the block size, we allocate a new block of memory of the new size. We call assert()
- * to make sure that we have enough space for that new block. 
- *
+ * 
  * memcpy copies block_size bytes from the old block pointer to the new block pointer.  
  * We deallocate the old block (if we had a working deallocator), and return the new block pointer, which points
  * to a memory block with the larger size. 
@@ -309,6 +271,8 @@ void main () {
  int size6 = 256; 
  int* h = (int*)malloc(size6*sizeof(int)); 
  assert(h > c && h > d); 
-
+ 
+ //now test if realloc works with our malloc
+ 
 } // main()
 #endif
