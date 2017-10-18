@@ -112,7 +112,7 @@ void* malloc (size_t size) {
   free_block_header = (link_s*) free_ptr;
   previous_free_block = NULL;
  
-  while(free_block_header != NULL && free_block_header != last_unallocated_free_ptr) {
+  while(free_block_header != NULL  && free_block_header != last_unallocated_free_ptr) {
    
     size_t free_block_size = free_block_header -> size; 
 
@@ -145,6 +145,8 @@ void* malloc (size_t size) {
 
   new_block_ptr = (void*) ((intptr_t) free_block_header + sizeof(link_s));
   last_unallocated_free_ptr = (void*) (intptr_t)new_block_ptr + size; 
+  
+  previous_free_block -> next = NULL; 
 
   return new_block_ptr;  
 
@@ -272,7 +274,8 @@ void main () {
  int* h = (int*)malloc(size6*sizeof(int)); 
  assert(h > c && h > d); 
  
- //now test if realloc works with our malloc
+ int* k = (int*)malloc(size6*sizeof(int)); 
+
  
 } // main()
 #endif
